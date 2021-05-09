@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"os/user"
 )
 
 var defaultServerConfig = `{
@@ -96,11 +95,10 @@ type OptionsType struct {
 }
 
 func Read() ConfigObject {
-	usr, _ := user.Current()
-	dir := usr.HomeDir
+
 
 	var jsontype ConfigObject
-	file, e := ioutil.ReadFile(dir + "/.l2go/config/server.json")
+	file, e := ioutil.ReadFile("server.json")
 
 	if e != nil {
 		fmt.Println("Couldn't load the server configuration file. Using the default preset.")

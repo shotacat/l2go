@@ -1,11 +1,11 @@
 package main
 
 import (
+	"./config"
+	"./gameserver"
+	"./loginserver"
 	"flag"
 	"fmt"
-	"github.com/frostwind/l2go/config"
-	"github.com/frostwind/l2go/gameserver"
-	"github.com/frostwind/l2go/loginserver"
 	"runtime"
 )
 
@@ -27,10 +27,10 @@ func main() {
 	} else {
 		// Try to load the Game Server configuration
 		if gameServerId >= 1 && len(globalConfig.GameServers) >= gameServerId {
-      config := config.GameServerConfigObject{}
-			config.LoginServer = globalConfig.LoginServer
-			config.GameServer = globalConfig.GameServers[gameServerId-1]
-      server := gameserver.New(config)
+      srvConfig := config.GameServerConfigObject{}
+			srvConfig.LoginServer = globalConfig.LoginServer
+			srvConfig.GameServer = globalConfig.GameServers[gameServerId-1]
+      server := gameserver.New(srvConfig)
       server.Init()
       server.Start()
 		} else {

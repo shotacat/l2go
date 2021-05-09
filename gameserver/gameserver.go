@@ -1,18 +1,22 @@
 package gameserver
 
 import (
-  "errors"
+	"../config"
+	"../gameserver/clientpackets"
+	"../gameserver/models"
+	"../gameserver/serverpackets"
+	"../packets"
 	"bytes"
+	"errors"
 	"fmt"
-	"github.com/frostwind/l2go/config"
-	"github.com/frostwind/l2go/packets"
-	"github.com/frostwind/l2go/gameserver/clientpackets"
-	"github.com/frostwind/l2go/gameserver/models"
-	"github.com/frostwind/l2go/gameserver/serverpackets"
 	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 	"net"
 	"strconv"
+	"time"
 )
+
+var charCoords = models.Coord{}
 
 type GameServer struct {
 	clients           []*models.Client
@@ -225,7 +229,8 @@ func (g *GameServer) handleClientPackets(client *models.Client) {
 		case 0x08:
 			fmt.Println("Client is requesting login to the Game Server")
 
-			buffer := serverpackets.NewCharListPacket()
+			buffer := serverpackets.CharListPacket()
+			fmt.Printf("%x",buffer)
 			err := client.Send(buffer)
 
 			if err != nil {
@@ -235,7 +240,7 @@ func (g *GameServer) handleClientPackets(client *models.Client) {
 		case 0x0e:
 			fmt.Println("Client is requesting character creation template")
 
-			buffer := serverpackets.NewCharTemplatePacket()
+			buffer := serverpackets.CharTemplatePacket()
 			err := client.Send(buffer)
 
 			if err != nil {
@@ -243,28 +248,93 @@ func (g *GameServer) handleClientPackets(client *models.Client) {
 			}
 
 		case 0x0b:
-			character := clientpackets.NewCharacterCreate(data)
+			character := clientpackets.CharacterCreate(data)
+			characters := g.database.C("characters")
+			err := characters.Find(bson.M{"name":character.Name}).One(&client.Character)
+			if err == nil {
+				buffer = serverpackets.CharCreateFailPacket(2)
+				fmt.Printf("Create character fail: name %s already taken\n", character.Name)
+				fmt.Printf("fail: %s\n", err)
+				err = client.Send(buffer)
+				if err != nil {
+					fmt.Println(err)
+				}
+			} else {
+				client.Character = models.Character{
+					Id:        bson.NewObjectId(),
+					Name:      character.Name,
+					Race:      character.Race,
+					Sex:       character.Sex,
+					ClassID:   character.ClassID,
+					STR:       character.STR,
+					CON:       character.CON,
+					DEX:       character.DEX,
+					INT:       character.INT,
+					MEN:       character.MEN,
+					WIT:       character.WIT,
+					HairStyle: character.HairStyle,
+					HairColor: character.HairColor,
+					Face:      character.Face,
+				}
+				err = characters.Insert(&client.Character)
+				if err == nil {
+					// ACK
+					buffer := serverpackets.CharCreateOkPacket()
+					err = client.Send(buffer)
+					if err != nil {
+						fmt.Println(err)
+					}
+					fmt.Printf("Created a new character : %s\n", character.Name)
 
-			fmt.Printf("Created a new character : %s\n", character.Name)
+					//Return to the character select screen
+					buffer = serverpackets.CharListPacket()
+					err = client.Send(buffer)
 
-			// ACK
-			buffer := serverpackets.NewCharCreateOkPacket()
-			err := client.Send(buffer)
-
-			if err != nil {
-				fmt.Println(err)
+					if err != nil {
+						fmt.Println(err)
+					}
+				} else {
+					fmt.Println(err)
+					buffer = serverpackets.CharCreateFailPacket(0)
+					fmt.Printf("Create character fail: %s \n", err)
+					err = client.Send(buffer)
+				}
 			}
-
-			// Return to the character select screen
-			buffer = serverpackets.NewCharListPacket()
+		case 0x09:
+			fmt.Println("logout client")
+			buffer = serverpackets.LogoutOkPacket()
 			err = client.Send(buffer)
-
-			if err != nil {
-				fmt.Println(err)
-			}
-
+			time.Sleep(time.Second * 1)
+			g.kickClient(client)
+			return
+		case 0x0d:
+			fmt.Println("char selected")
+			buffer = serverpackets.CharSelectedPacket()
+			err = client.Send(buffer)
+		case 0x03:
+			fmt.Println("enter world")
+			buffer = serverpackets.UserInfoPacket()
+			fmt.Println(buffer)
+			err = client.Send(buffer)
+		case 0x01:
+			coords := clientpackets.MoveBackwardToLocation(data)
+			charCoords = coords
+			//coords.DstX, coords.DstY, coords.DstZ = coords.CurX, coords.CurY, coords.CurZ
+			buffer = serverpackets.CharMoveToLocation(coords) //read position and reply back
+			//buffer = serverpackets.ValidateLocation(charCoords) //read position and reply back
+			//buffer = serverpackets.CharMoveToLocation(coords) //read position and reply back
+			err = client.Send(buffer)
+			//buffer = serverpackets.TeleportToLocation(charCoords) //read position and reply back
+			err = client.Send(buffer)
+			fmt.Printf("Move to %d, %d, %d from %d, %d, %d\n", coords.DstX, coords.DstY, coords.DstZ, coords.CurX, coords.CurY, coords.CurZ)
+		case 0x48:
+			fmt.Println("validate position")
+			//buffer = serverpackets.ValidateLocation(charCoords) //read position and reply back
+			//fmt.Printf("Move to %d, %d, %d from %d, %d, %d\n", coords.DstX, coords.DstY, coords.DstZ, coords.CurX, coords.CurY, coords.CurZ)
+			//err = client.Send(buffer)
 		default:
 			fmt.Println("Couldn't detect the packet type.")
+			buffer = serverpackets.LogoutOkPacket()
 		}
 	}
 

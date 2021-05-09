@@ -1,13 +1,13 @@
 package loginserver
 
 import (
+	"../config"
+	"../loginserver/clientpackets"
+	"../loginserver/models"
+	"../loginserver/serverpackets"
 	"bytes"
-	"code.google.com/p/go.crypto/bcrypt"
 	"fmt"
-	"github.com/frostwind/l2go/config"
-	"github.com/frostwind/l2go/loginserver/clientpackets"
-	"github.com/frostwind/l2go/loginserver/models"
-	"github.com/frostwind/l2go/loginserver/serverpackets"
+	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"net"
@@ -56,7 +56,7 @@ func (l *LoginServer) Init() {
 	// Listen for client connections
 	l.clientsListener, err = net.Listen("tcp", ":2106")
 	if err != nil {
-		fmt.Println("Couldn't initialize the Login Server (Clients listener)")
+		fmt.Println("Couldn't initialize the Login Server (Clients listener)")  // 8923 415 6582
 	} else {
 		fmt.Println("Login Server listening for clients connections on port 2106")
 	}

@@ -1,7 +1,7 @@
 package serverpackets
 
 import (
-	"github.com/frostwind/l2go/config"
+	"../../config"
 	"github.com/frostwind/l2go/packets"
 	"net"
 )
@@ -10,7 +10,7 @@ func NewServerListPacket(gameServers []config.GameServerType, remoteAddr string)
 	buffer := new(packets.Buffer)
 	buffer.WriteByte(0x04)
 	buffer.WriteUInt8(uint8(len(gameServers))) // Servers count
-	buffer.WriteByte(0x00)                     // Unused
+	buffer.WriteByte(0x01)                     // Unused
 
 	network, _, _ := net.SplitHostPort(remoteAddr)
 
@@ -39,6 +39,7 @@ func NewServerListPacket(gameServers []config.GameServerType, remoteAddr string)
 			buffer.WriteByte(0x01)
 		}
 		buffer.WriteUInt32(0x02) // Display a green clock (what is this for?)
+		buffer.WriteByte(0x01)
 	}
 
 	return buffer.Bytes()

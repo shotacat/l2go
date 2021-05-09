@@ -20,7 +20,7 @@ type Character struct {
 	Face      uint32
 }
 
-func NewCharacterCreate(request []byte) Character {
+func CharacterCreate(request []byte) Character {
 	var packet = packets.NewReader(request)
 	var c Character
 

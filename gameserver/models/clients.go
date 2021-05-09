@@ -1,9 +1,9 @@
 package models
 
 import (
+	"../../gameserver/crypt/xor"
 	"errors"
 	"fmt"
-	"github.com/frostwind/l2go/gameserver/crypt/xor"
 	"github.com/frostwind/l2go/packets"
 	"net"
 )
@@ -12,6 +12,7 @@ type Client struct {
 	SessionID []byte
 	Socket    net.Conn
 	Cipher    *xor.Cipher
+	Character Character
 }
 
 func NewClient() *Client {
